@@ -1,0 +1,11 @@
+const express=require('express');
+const Employee=require('../models/Employee');
+const auth=require('../middleware/auth');
+const {invalid,employeeValidation,validId}=require('../middleware/validate');
+const router=express.Router();router.use(auth);
+router.get('/employees',async(req,res,next)=>{try{res.json(await Employee.find({user:req.userId}).sort({created_at:-1}));}catch(e){next(e);}});
+router.post('/employees',async(req,res,next)=>{try{const errors=employeeValidation(req.body);if(errors.length)return invalid(res,errors);const emp=await Employee.create({...req.body,user:req.userId});res.status(201).json(emp);}catch(e){next(e);}});
+router.get('/employees/:eid',async(req,res,next)=>{try{if(!validId(req.params.eid))return invalid(res,['invalid employee ID']);const emp=await Employee.findOne({_id:req.params.eid,user:req.userId});if(!emp)return res.status(404).json({error:'Employee not found or inaccessible'});res.json(emp);}catch(e){next(e);}});
+router.put('/employees/:eid',async(req,res,next)=>{try{if(!validId(req.params.eid))return invalid(res,['invalid employee ID']);const errors=employeeValidation(req.body,true);if(errors.length)return invalid(res,errors);const emp=await Employee.findOneAndUpdate({_id:req.params.eid,user:req.userId},{$set:req.body},{new:true,runValidators:true});if(!emp)return res.status(404).json({error:'Employee not found or inaccessible'});res.json(emp);}catch(e){next(e);}});
+router.delete('/employees',async(req,res,next)=>{try{if(!validId(req.query.eid))return invalid(res,['invalid employee ID']);const emp=await Employee.findOneAndDelete({_id:req.query.eid,user:req.userId});if(!emp)return res.status(404).json({error:'Employee not found or inaccessible'});res.status(204).end();}catch(e){next(e);}});
+module.exports=router;
